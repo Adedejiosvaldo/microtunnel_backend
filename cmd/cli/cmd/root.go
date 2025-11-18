@@ -4,9 +4,11 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gorilla/websocket"
@@ -77,7 +79,33 @@ localhost — without needing ngrok`,
 			}
 
 			// Forwarding our request to the localhost
-			localHostURL := fmt.Sprintf("http://localhost:%d%s",)
+			localHostURL := fmt.Sprintf("http://localhost:%d%s", PORT, request.Path)
+			httpReq, _ := http.NewRequest(request.Method, localHostURL, bytes.NewBufferString(request.Body))
+			for k, v := range request.Headers {
+				httpReq.Header.Set(k, v)
+			}
+
+			// Sending the request
+			client := &http.Client{}
+			// .DO sends the http request
+			resp, err := client.Do(httpReq)
+			if err != nil {
+				// send an error response
+				errResp := Response{
+					ID:     request.ID,
+					Body:   "Local Server Error",
+					Status: 502,
+				}
+				// convert to json
+				respData, _ := json.Marshal(errResp)
+				conn.WriteMessage(websocket.TextMessage, respData)
+				continue
+			}
+
+			defer resp.Body.Close()
+
+			// Read what is being returned
+
 		}
 
 	},
