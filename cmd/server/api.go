@@ -36,7 +36,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // Keeping track of the tunnel connections
-var tunnelConnections map[string]*websocket.Conn
+var tunnelConnections = make(map[string]*websocket.Conn)
 
 // mutex to ensure that goroutines dont interrupt
 var mutex sync.Mutex

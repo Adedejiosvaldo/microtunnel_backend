@@ -113,15 +113,15 @@ localhost — without needing ngrok`,
 			}
 
 			response := Response{
-				ID: req.ID
-				Status: resp.StatusCode,
+				ID:      request.ID,
+				Status:  resp.StatusCode,
 				Headers: headers,
-				Body: string(body),
+				Body:    string(body),
 			}
 			// send it back
 			//
-			respData,_ := json.Marshal(response)
-			conn.WriteMessage(websocket.TextMessage,respData)
+			respData, _ := json.Marshal(response)
+			conn.WriteMessage(websocket.TextMessage, respData)
 
 		}
 
