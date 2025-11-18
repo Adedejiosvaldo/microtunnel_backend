@@ -14,7 +14,7 @@ func main() {
 	// The get route for us to connect to the application
 	// Any - The core of the application - allow any api request
 	r.GET("/connect", handleConnection)
-	r.Any("/")
+	r.Any("/", handleRequest)
 
 	// Start server on port 8080 (default)
 	fmt.Println("...Serving the server")
