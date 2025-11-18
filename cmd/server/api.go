@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -118,15 +120,45 @@ func handleRequest(c *gin.Context) {
 		return
 	}
 	// Serialize the request
-	requestData := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
+	//
+	reqID := uuid.New().String()
+	headers := make(map[string]string)
+	for k, v := range c.Request.Header {
+		headers[k] = strings.Join(v, ",")
+	}
+	body := ""
 
-	err = conn.WriteMessage(websocket.TextMessage, []byte(requestData))
+	req := Request{
+		ID:      reqID,
+		Headers: headers,
+		Method:  c.Request.Method,
+		Body:    body,
+		Path:    c.Request.URL.Path,
+	}
+	reqData, _ := json.Marshal(req)
 
-	if err != nil {
+	if err = conn.WriteMessage(websocket.TextMessage, reqData); err != nil {
 		c.JSON(502, gin.H{"error": "Failed to forward request"})
 		return
 	}
 
+	// we are waiting for reponse
+	respChan := make(chan Response, 1)
+	responseMutex.Lock()
+	responseConnections[reqID] = respChan
+	responseMutex.Unlock()
+
+	select {
+	case resp := <-respChan:
+
+		for k, v := range resp.Headers {
+			c.Header(k, v)
+		}
+		c.Data(resp.status, "application/octet-stream", []byte(resp.Body))
+	case <-time.After(10 * time.Second):
+		c.JSON(504, gin.H{"error": "Request Timeout"})
+	}
+
 	// for now, we are working with a dummy response
-	c.JSON(200, gin.H{"message": fmt.Sprintf("Message forwarded to tunnel %s", tunnelID)})
+	// c.JSON(200, gin.H{"message": fmt.Sprintf("Message forwarded to tunnel %s", tunnelID)})
 }
