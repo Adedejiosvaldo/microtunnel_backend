@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -105,6 +106,22 @@ localhost — without needing ngrok`,
 			defer resp.Body.Close()
 
 			// Read what is being returned
+			body, _ := io.ReadAll(resp.Body)
+			headers := make(map[string]string)
+			for k, v := range resp.Header {
+				headers[k] = v[0]
+			}
+
+			response := Response{
+				ID: req.ID
+				Status: resp.StatusCode,
+				Headers: headers,
+				Body: string(body),
+			}
+			// send it back
+			//
+			respData,_ := json.Marshal(response)
+			conn.WriteMessage(websocket.TextMessage,respData)
 
 		}
 
