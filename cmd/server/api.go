@@ -60,3 +60,36 @@ func handleConnection(c *gin.Context) {
 	}
 
 }
+
+// Handles every request from the client: cli
+func handleRequest(c *gin.Context) {
+
+	tunnelID, err := extractTunnelIDFromURL(c)
+
+	if tunnelID == "" || err != nil {
+		c.JSON(400, gin.H{"error": "Invalid Tunnel ID"})
+	}
+
+	// check if we already have that connection
+	//  and add mutex
+	mutex.Lock()
+	conn, exists := tunnelConnections[tunnelID]
+	mutex.Unlock()
+
+	if !exists {
+		c.JSON(400, gin.H{"error": "Tunnel not found or has been disconnected"})
+		return
+	}
+	// Serialize the request
+	requestData := fmt.Sprintf("%s %s", c.Request.Method, c.Request.URL.Path)
+
+	err = conn.WriteMessage(websocket.TextMessage, []byte(requestData))
+
+	if err != nil {
+		c.JSON(502, gin.H{"error": "Failed to forward request"})
+		return
+	}
+
+	// for now, we are working with a dummy response
+	c.JSON(200, gin.H{"message": fmt.Sprintf("Message forwarded to tunnel %s", tunnelID)})
+}
