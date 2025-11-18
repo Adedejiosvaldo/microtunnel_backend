@@ -30,7 +30,7 @@ type Request struct {
 // structure of the response being sent
 type Response struct {
 	ID      string            `json:"id"`
-	status  int               `json:"status"`
+	Status  int               `json:"status"`
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body"`
 }
@@ -154,7 +154,7 @@ func handleRequest(c *gin.Context) {
 		for k, v := range resp.Headers {
 			c.Header(k, v)
 		}
-		c.Data(resp.status, "application/octet-stream", []byte(resp.Body))
+		c.Data(resp.Status, "application/octet-stream", []byte(resp.Body))
 	case <-time.After(10 * time.Second):
 		c.JSON(504, gin.H{"error": "Request Timeout"})
 	}
