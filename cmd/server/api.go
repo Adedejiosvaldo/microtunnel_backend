@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,14 +16,35 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// Request - struct representing the structure of the HTTP request
+type Request struct {
+	ID      string            `json:"id"`
+	Path    string            `json:"path"`
+	Method  string            `json:"method"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+}
+
+// structure of the response being sent
+type Response struct {
+	ID      string            `json:"id"`
+	status  int               `json:"status"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+}
+
 // Keeping track of the tunnel connections
 var tunnelConnections map[string]*websocket.Conn
 
 // mutex to ensure that goroutines dont interrupt
 var mutex sync.Mutex
 
+// mapping of pending request to the channels
+var responseConnections = make(map[string]chan Response)
+var responseMutex sync.Mutex
+
 func handleConnection(c *gin.Context) {
-	// we first upgrade
+	// we first upgrade to websocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 
 	if err != nil {
@@ -55,6 +77,21 @@ func handleConnection(c *gin.Context) {
 			mutex.Unlock()
 			break
 		}
+
+		//  we parse what we recieve as message and send to the waiting connection
+		var response Response
+		if err := json.Unmarshal(msg, &response); err != nil {
+			log.Println("Invalid Repose", err)
+			continue
+		}
+
+		responseMutex.Lock()
+		if ch, exists := responseConnections[response.ID]; exists {
+			ch <- response
+			delete(responseConnections, response.ID)
+		}
+		responseMutex.Unlock()
+
 		log.Printf("Recieved message from CLI Client: %s: %s", tunnelID, msg)
 
 	}
