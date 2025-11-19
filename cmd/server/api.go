@@ -56,12 +56,14 @@ func handleConnection(c *gin.Context) {
 
 	defer conn.Close()
 
-	tunnelID := uuid.New().String()[:15]
+	tunnelID := uuid.New().String()
 
 	// mutex lock, save the id, and unlock
 	mutex.Lock()
 	tunnelConnections[tunnelID] = conn
 	mutex.Unlock()
+
+	log.Printf("Stored tunnel ID: %s", tunnelID) // Add after mutex.Unlock()
 
 	// send back the tunnel info to the cli
 	conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Tunnel established: %s", tunnelID)))
@@ -94,7 +96,7 @@ func handleConnection(c *gin.Context) {
 		}
 		responseMutex.Unlock()
 
-		log.Printf("Recieved message from CLI Client: %s: %s", tunnelID, msg)
+		log.Printf("Recieved message from CLI Client: %s: %s", tunnelID)
 
 	}
 
@@ -105,9 +107,13 @@ func handleRequest(c *gin.Context) {
 
 	tunnelID, err := extractTunnelIDFromURL(c)
 
+	log.Println("Request for tunnelID", tunnelID)
 	if tunnelID == "" || err != nil {
 		c.JSON(400, gin.H{"error": "Invalid Tunnel ID"})
+		return
 	}
+
+	path := strings.TrimPrefix(c.Request.URL.Path, "/"+tunnelID)
 
 	// check if we already have that connection
 	//  and add mutex
@@ -133,7 +139,7 @@ func handleRequest(c *gin.Context) {
 		Headers: headers,
 		Method:  c.Request.Method,
 		Body:    body,
-		Path:    c.Request.URL.Path,
+		Path:    path,
 	}
 	reqData, _ := json.Marshal(req)
 

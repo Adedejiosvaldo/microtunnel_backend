@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"github.com/spf13/cobra"
@@ -59,7 +60,7 @@ localhost — without needing ngrok`,
 		if err != nil {
 			log.Fatal("Failed to read from the tunnel", err)
 		}
-		tunnelID := string(message[len("Tunnel established: "):])
+		tunnelID := strings.TrimSpace(string(message[len("Tunnel established: "):]))
 		publicURL := fmt.Sprintf("http://localhost:8080/%s", tunnelID)
 		fmt.Printf("Tunnel Established! Public URL: %s \n", publicURL)
 
@@ -78,6 +79,8 @@ localhost — without needing ngrok`,
 				log.Println("Invalid Request", err)
 				continue
 			}
+
+			log.Printf("Received request: %s %s", request.Method, request.Path)
 
 			// Forwarding our request to the localhost
 			localHostURL := fmt.Sprintf("http://localhost:%d%s", PORT, request.Path)
@@ -120,6 +123,8 @@ localhost — without needing ngrok`,
 			}
 			// send it back
 			//
+			log.Printf("Sent response: %d", response.Status)
+
 			respData, _ := json.Marshal(response)
 			conn.WriteMessage(websocket.TextMessage, respData)
 
